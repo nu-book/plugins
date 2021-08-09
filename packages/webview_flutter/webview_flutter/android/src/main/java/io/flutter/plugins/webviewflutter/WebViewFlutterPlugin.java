@@ -18,9 +18,9 @@ import io.flutter.plugin.common.BinaryMessenger;
 public class WebViewFlutterPlugin implements FlutterPlugin {
 
   private FlutterCookieManager flutterCookieManager;
-  private WebViewFactory webViewFactory;
+  private FlutterWebViewFactory webViewFactory;
 
-  public WebViewFactory getWebViewFactory() {
+  public FlutterWebViewFactory getWebViewFactory() {
     return webViewFactory;
   }
 
@@ -51,7 +51,7 @@ public class WebViewFlutterPlugin implements FlutterPlugin {
         .platformViewRegistry()
         .registerViewFactory(
             "plugins.flutter.io/webview",
-            webViewFactory = new FlutterWebViewFactory(registrar.messenger(), registrar.view()));
+            new FlutterWebViewFactory(registrar.messenger(), registrar.view()));
     new FlutterCookieManager(registrar.messenger());
   }
 
