@@ -1,3 +1,9 @@
+## 5.1.0
+
+* Add reAuthenticate option to signInSilently to allow re-authentication to be requested
+
+* Updated Android lint settings.
+
 ## 5.0.7
 
 * Mark iOS arm64 simulators as unsupported.

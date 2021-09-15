@@ -5,9 +5,10 @@
 import 'dart:html';
 import 'dart:ui';
 
+import 'package:async/async.dart';
 import 'package:camera_platform_interface/camera_platform_interface.dart';
 import 'package:camera_web/src/camera.dart';
-import 'package:camera_web/src/camera_settings.dart';
+import 'package:camera_web/src/camera_service.dart';
 import 'package:camera_web/src/types/types.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -26,7 +27,7 @@ void main() {
     late MediaDevices mediaDevices;
 
     late MediaStream mediaStream;
-    late CameraSettings cameraSettings;
+    late CameraService cameraService;
 
     setUp(() {
       window = MockWindow();
@@ -36,13 +37,13 @@ void main() {
       when(() => window.navigator).thenReturn(navigator);
       when(() => navigator.mediaDevices).thenReturn(mediaDevices);
 
-      cameraSettings = MockCameraSettings();
+      cameraService = MockCameraService();
 
       final videoElement = getVideoElementWithBlankStream(Size(10, 10));
       mediaStream = videoElement.captureStream();
 
       when(
-        () => cameraSettings.getMediaStreamForOptions(
+        () => cameraService.getMediaStreamForOptions(
           any(),
           cameraId: any(named: 'cameraId'),
         ),
@@ -55,7 +56,7 @@ void main() {
 
     group('initialize', () {
       testWidgets(
-          'calls CameraSettings.getMediaStreamForOptions '
+          'calls CameraService.getMediaStreamForOptions '
           'with provided options', (tester) async {
         final options = CameraOptions(
           video: VideoConstraints(
@@ -67,13 +68,13 @@ void main() {
         final camera = Camera(
           textureId: textureId,
           options: options,
-          cameraSettings: cameraSettings,
+          cameraService: cameraService,
         );
 
         await camera.initialize();
 
         verify(
-          () => cameraSettings.getMediaStreamForOptions(
+          () => cameraService.getMediaStreamForOptions(
             options,
             cameraId: textureId,
           ),
@@ -84,20 +85,26 @@ void main() {
           'creates a video element '
           'with correct properties', (tester) async {
         const audioConstraints = AudioConstraints(enabled: true);
+        final videoConstraints = VideoConstraints(
+          facingMode: FacingModeConstraint(
+            CameraType.user,
+          ),
+        );
 
         final camera = Camera(
           textureId: textureId,
           options: CameraOptions(
             audio: audioConstraints,
+            video: videoConstraints,
           ),
-          cameraSettings: cameraSettings,
+          cameraService: cameraService,
         );
 
         await camera.initialize();
 
         expect(camera.videoElement, isNotNull);
         expect(camera.videoElement.autoplay, isFalse);
-        expect(camera.videoElement.muted, !audioConstraints.enabled);
+        expect(camera.videoElement.muted, isTrue);
         expect(camera.videoElement.srcObject, mediaStream);
         expect(camera.videoElement.attributes.keys, contains('playsinline'));
 
@@ -107,6 +114,27 @@ void main() {
         expect(camera.videoElement.style.width, equals('100%'));
         expect(camera.videoElement.style.height, equals('100%'));
         expect(camera.videoElement.style.objectFit, equals('cover'));
+      });
+
+      testWidgets(
+          'flips the video element horizontally '
+          'for a back camera', (tester) async {
+        final videoConstraints = VideoConstraints(
+          facingMode: FacingModeConstraint(
+            CameraType.environment,
+          ),
+        );
+
+        final camera = Camera(
+          textureId: textureId,
+          options: CameraOptions(
+            video: videoConstraints,
+          ),
+          cameraService: cameraService,
+        );
+
+        await camera.initialize();
+
         expect(camera.videoElement.style.transform, equals('scaleX(-1)'));
       });
 
@@ -115,7 +143,7 @@ void main() {
           'with correct properties', (tester) async {
         final camera = Camera(
           textureId: textureId,
-          cameraSettings: cameraSettings,
+          cameraService: cameraService,
         );
 
         await camera.initialize();
@@ -128,7 +156,7 @@ void main() {
       testWidgets('initializes the camera stream', (tester) async {
         final camera = Camera(
           textureId: textureId,
-          cameraSettings: cameraSettings,
+          cameraService: cameraService,
         );
 
         await camera.initialize();
@@ -138,16 +166,15 @@ void main() {
 
       testWidgets(
           'throws an exception '
-          'when CameraSettings.getMediaStreamForOptions throws',
-          (tester) async {
+          'when CameraService.getMediaStreamForOptions throws', (tester) async {
         final exception = Exception('A media stream exception occured.');
 
-        when(() => cameraSettings.getMediaStreamForOptions(any(),
+        when(() => cameraService.getMediaStreamForOptions(any(),
             cameraId: any(named: 'cameraId'))).thenThrow(exception);
 
         final camera = Camera(
           textureId: textureId,
-          cameraSettings: cameraSettings,
+          cameraService: cameraService,
         );
 
         expect(
@@ -163,7 +190,7 @@ void main() {
 
         final camera = Camera(
           textureId: textureId,
-          cameraSettings: cameraSettings,
+          cameraService: cameraService,
         );
 
         await camera.initialize();
@@ -180,7 +207,7 @@ void main() {
 
       testWidgets(
           'initializes the camera stream '
-          'from CameraSettings.getMediaStreamForOptions '
+          'from CameraService.getMediaStreamForOptions '
           'if it does not exist', (tester) async {
         final options = CameraOptions(
           video: VideoConstraints(
@@ -191,7 +218,7 @@ void main() {
         final camera = Camera(
           textureId: textureId,
           options: options,
-          cameraSettings: cameraSettings,
+          cameraService: cameraService,
         );
 
         await camera.initialize();
@@ -204,7 +231,7 @@ void main() {
 
         // Should be called twice: for initialize and play.
         verify(
-          () => cameraSettings.getMediaStreamForOptions(
+          () => cameraService.getMediaStreamForOptions(
             options,
             cameraId: textureId,
           ),
@@ -215,11 +242,29 @@ void main() {
       });
     });
 
+    group('pause', () {
+      testWidgets('pauses the camera stream', (tester) async {
+        final camera = Camera(
+          textureId: textureId,
+          cameraService: cameraService,
+        );
+
+        await camera.initialize();
+        await camera.play();
+
+        expect(camera.videoElement.paused, isFalse);
+
+        camera.pause();
+
+        expect(camera.videoElement.paused, isTrue);
+      });
+    });
+
     group('stop', () {
       testWidgets('resets the camera stream', (tester) async {
         final camera = Camera(
           textureId: textureId,
-          cameraSettings: cameraSettings,
+          cameraService: cameraService,
         );
 
         await camera.initialize();
@@ -236,7 +281,7 @@ void main() {
       testWidgets('returns a captured picture', (tester) async {
         final camera = Camera(
           textureId: textureId,
-          cameraSettings: cameraSettings,
+          cameraService: cameraService,
         );
 
         await camera.initialize();
@@ -272,7 +317,7 @@ void main() {
         testWidgets('if the flash mode is auto', (tester) async {
           final camera = Camera(
             textureId: textureId,
-            cameraSettings: cameraSettings,
+            cameraService: cameraService,
           )
             ..window = window
             ..stream = videoStream
@@ -307,7 +352,7 @@ void main() {
         testWidgets('if the flash mode is always', (tester) async {
           final camera = Camera(
             textureId: textureId,
-            cameraSettings: cameraSettings,
+            cameraService: cameraService,
           )
             ..window = window
             ..stream = videoStream
@@ -352,13 +397,13 @@ void main() {
 
         final camera = Camera(
           textureId: textureId,
-          cameraSettings: cameraSettings,
+          cameraService: cameraService,
         );
 
         await camera.initialize();
 
         expect(
-          await camera.getVideoSize(),
+          camera.getVideoSize(),
           equals(videoSize),
         );
       });
@@ -372,13 +417,13 @@ void main() {
 
         final camera = Camera(
           textureId: textureId,
-          cameraSettings: cameraSettings,
+          cameraService: cameraService,
         );
 
         await camera.initialize();
 
         expect(
-          await camera.getVideoSize(),
+          camera.getVideoSize(),
           equals(Size.zero),
         );
       });
@@ -409,7 +454,7 @@ void main() {
 
         final camera = Camera(
           textureId: textureId,
-          cameraSettings: cameraSettings,
+          cameraService: cameraService,
         )
           ..window = window
           ..stream = videoStream;
@@ -437,7 +482,7 @@ void main() {
 
         final camera = Camera(
           textureId: textureId,
-          cameraSettings: cameraSettings,
+          cameraService: cameraService,
         )
           ..window = window
           ..stream = videoStream;
@@ -468,7 +513,7 @@ void main() {
 
         final camera = Camera(
           textureId: textureId,
-          cameraSettings: cameraSettings,
+          cameraService: cameraService,
         )
           ..window = window
           ..stream = videoStream;
@@ -494,7 +539,7 @@ void main() {
 
           final camera = Camera(
             textureId: textureId,
-            cameraSettings: cameraSettings,
+            cameraService: cameraService,
           )
             ..window = window
             ..stream = videoStream;
@@ -531,7 +576,7 @@ void main() {
 
           final camera = Camera(
             textureId: textureId,
-            cameraSettings: cameraSettings,
+            cameraService: cameraService,
           )
             ..window = window
             ..stream = videoStream;
@@ -568,7 +613,7 @@ void main() {
 
           final camera = Camera(
             textureId: textureId,
-            cameraSettings: cameraSettings,
+            cameraService: cameraService,
           )
             ..window = window
             ..stream = videoStream;
@@ -604,7 +649,7 @@ void main() {
 
           final camera = Camera(
             textureId: textureId,
-            cameraSettings: cameraSettings,
+            cameraService: cameraService,
           )..window = window;
 
           expect(
@@ -627,11 +672,266 @@ void main() {
       });
     });
 
+    group('zoomLevel', () {
+      group('getMaxZoomLevel', () {
+        testWidgets(
+            'returns maximum '
+            'from CameraService.getZoomLevelCapabilityForCamera',
+            (tester) async {
+          final camera = Camera(
+            textureId: textureId,
+            cameraService: cameraService,
+          );
+
+          final zoomLevelCapability = ZoomLevelCapability(
+            minimum: 50.0,
+            maximum: 100.0,
+            videoTrack: MockMediaStreamTrack(),
+          );
+
+          when(() => cameraService.getZoomLevelCapabilityForCamera(camera))
+              .thenReturn(zoomLevelCapability);
+
+          final maximumZoomLevel = camera.getMaxZoomLevel();
+
+          verify(() => cameraService.getZoomLevelCapabilityForCamera(camera))
+              .called(1);
+
+          expect(
+            maximumZoomLevel,
+            equals(zoomLevelCapability.maximum),
+          );
+        });
+      });
+
+      group('getMinZoomLevel', () {
+        testWidgets(
+            'returns minimum '
+            'from CameraService.getZoomLevelCapabilityForCamera',
+            (tester) async {
+          final camera = Camera(
+            textureId: textureId,
+            cameraService: cameraService,
+          );
+
+          final zoomLevelCapability = ZoomLevelCapability(
+            minimum: 50.0,
+            maximum: 100.0,
+            videoTrack: MockMediaStreamTrack(),
+          );
+
+          when(() => cameraService.getZoomLevelCapabilityForCamera(camera))
+              .thenReturn(zoomLevelCapability);
+
+          final minimumZoomLevel = camera.getMinZoomLevel();
+
+          verify(() => cameraService.getZoomLevelCapabilityForCamera(camera))
+              .called(1);
+
+          expect(
+            minimumZoomLevel,
+            equals(zoomLevelCapability.minimum),
+          );
+        });
+      });
+
+      group('setZoomLevel', () {
+        testWidgets(
+            'applies zoom on the video track '
+            'from CameraService.getZoomLevelCapabilityForCamera',
+            (tester) async {
+          final camera = Camera(
+            textureId: textureId,
+            cameraService: cameraService,
+          );
+
+          final videoTrack = MockMediaStreamTrack();
+
+          final zoomLevelCapability = ZoomLevelCapability(
+            minimum: 50.0,
+            maximum: 100.0,
+            videoTrack: videoTrack,
+          );
+
+          when(() => videoTrack.applyConstraints(any()))
+              .thenAnswer((_) async {});
+
+          when(() => cameraService.getZoomLevelCapabilityForCamera(camera))
+              .thenReturn(zoomLevelCapability);
+
+          const zoom = 75.0;
+
+          camera.setZoomLevel(zoom);
+
+          verify(
+            () => videoTrack.applyConstraints({
+              "advanced": [
+                {
+                  ZoomLevelCapability.constraintName: zoom,
+                }
+              ]
+            }),
+          ).called(1);
+        });
+
+        group('throws CameraWebException', () {
+          testWidgets(
+              'with zoomLevelInvalid error '
+              'when the provided zoom level is below minimum', (tester) async {
+            final camera = Camera(
+              textureId: textureId,
+              cameraService: cameraService,
+            );
+
+            final zoomLevelCapability = ZoomLevelCapability(
+              minimum: 50.0,
+              maximum: 100.0,
+              videoTrack: MockMediaStreamTrack(),
+            );
+
+            when(() => cameraService.getZoomLevelCapabilityForCamera(camera))
+                .thenReturn(zoomLevelCapability);
+
+            expect(
+                () => camera.setZoomLevel(45.0),
+                throwsA(
+                  isA<CameraWebException>()
+                      .having(
+                        (e) => e.cameraId,
+                        'cameraId',
+                        textureId,
+                      )
+                      .having(
+                        (e) => e.code,
+                        'code',
+                        CameraErrorCode.zoomLevelInvalid,
+                      ),
+                ));
+          });
+
+          testWidgets(
+              'with zoomLevelInvalid error '
+              'when the provided zoom level is below minimum', (tester) async {
+            final camera = Camera(
+              textureId: textureId,
+              cameraService: cameraService,
+            );
+
+            final zoomLevelCapability = ZoomLevelCapability(
+              minimum: 50.0,
+              maximum: 100.0,
+              videoTrack: MockMediaStreamTrack(),
+            );
+
+            when(() => cameraService.getZoomLevelCapabilityForCamera(camera))
+                .thenReturn(zoomLevelCapability);
+
+            expect(
+                () => camera.setZoomLevel(105.0),
+                throwsA(
+                  isA<CameraWebException>()
+                      .having(
+                        (e) => e.cameraId,
+                        'cameraId',
+                        textureId,
+                      )
+                      .having(
+                        (e) => e.code,
+                        'code',
+                        CameraErrorCode.zoomLevelInvalid,
+                      ),
+                ));
+          });
+        });
+      });
+    });
+
+    group('getLensDirection', () {
+      testWidgets(
+          'returns a lens direction '
+          'based on the first video track settings', (tester) async {
+        final videoElement = MockVideoElement();
+
+        final camera = Camera(
+          textureId: textureId,
+          cameraService: cameraService,
+        )..videoElement = videoElement;
+
+        final firstVideoTrack = MockMediaStreamTrack();
+
+        when(() => videoElement.srcObject).thenReturn(
+          FakeMediaStream([
+            firstVideoTrack,
+            MockMediaStreamTrack(),
+          ]),
+        );
+
+        when(firstVideoTrack.getSettings)
+            .thenReturn({'facingMode': 'environment'});
+
+        when(() => cameraService.mapFacingModeToLensDirection('environment'))
+            .thenReturn(CameraLensDirection.external);
+
+        expect(
+          camera.getLensDirection(),
+          equals(CameraLensDirection.external),
+        );
+      });
+
+      testWidgets(
+          'returns null '
+          'if the first video track is missing the facing mode',
+          (tester) async {
+        final videoElement = MockVideoElement();
+
+        final camera = Camera(
+          textureId: textureId,
+          cameraService: cameraService,
+        )..videoElement = videoElement;
+
+        final firstVideoTrack = MockMediaStreamTrack();
+
+        when(() => videoElement.srcObject).thenReturn(
+          FakeMediaStream([
+            firstVideoTrack,
+            MockMediaStreamTrack(),
+          ]),
+        );
+
+        when(firstVideoTrack.getSettings).thenReturn({});
+
+        expect(
+          camera.getLensDirection(),
+          isNull,
+        );
+      });
+
+      testWidgets(
+          'returns null '
+          'if the camera is missing video tracks', (tester) async {
+        // Create a video stream with no video tracks.
+        final videoElement = VideoElement();
+        mediaStream = videoElement.captureStream();
+
+        final camera = Camera(
+          textureId: textureId,
+          cameraService: cameraService,
+        );
+
+        await camera.initialize();
+
+        expect(
+          camera.getLensDirection(),
+          isNull,
+        );
+      });
+    });
+
     group('getViewType', () {
       testWidgets('returns a correct view type', (tester) async {
         final camera = Camera(
           textureId: textureId,
-          cameraSettings: cameraSettings,
+          cameraService: cameraService,
         );
 
         await camera.initialize();
@@ -647,14 +947,85 @@ void main() {
       testWidgets('resets the video element\'s source', (tester) async {
         final camera = Camera(
           textureId: textureId,
-          cameraSettings: cameraSettings,
+          cameraService: cameraService,
         );
 
         await camera.initialize();
 
-        camera.dispose();
+        await camera.dispose();
 
         expect(camera.videoElement.srcObject, isNull);
+      });
+    });
+
+    group('events', () {
+      group('onEnded', () {
+        testWidgets(
+            'emits the default video track '
+            'when it emits an ended event', (tester) async {
+          final camera = Camera(
+            textureId: textureId,
+            cameraService: cameraService,
+          );
+
+          final streamQueue = StreamQueue(camera.onEnded);
+
+          await camera.initialize();
+
+          final videoTracks = camera.stream!.getVideoTracks();
+          final defaultVideoTrack = videoTracks.first;
+
+          defaultVideoTrack.dispatchEvent(Event('ended'));
+
+          expect(
+            await streamQueue.next,
+            equals(defaultVideoTrack),
+          );
+
+          await streamQueue.cancel();
+        });
+
+        testWidgets(
+            'emits the default video track '
+            'when the camera is stopped', (tester) async {
+          final camera = Camera(
+            textureId: textureId,
+            cameraService: cameraService,
+          );
+
+          final streamQueue = StreamQueue(camera.onEnded);
+
+          await camera.initialize();
+
+          final videoTracks = camera.stream!.getVideoTracks();
+          final defaultVideoTrack = videoTracks.first;
+
+          camera.stop();
+
+          expect(
+            await streamQueue.next,
+            equals(defaultVideoTrack),
+          );
+
+          await streamQueue.cancel();
+        });
+
+        testWidgets(
+            'no longer emits the default video track '
+            'when the camera is disposed', (tester) async {
+          final camera = Camera(
+            textureId: textureId,
+            cameraService: cameraService,
+          );
+
+          await camera.initialize();
+          await camera.dispose();
+
+          expect(
+            camera.onEndedStreamController.isClosed,
+            isTrue,
+          );
+        });
       });
     });
   });
