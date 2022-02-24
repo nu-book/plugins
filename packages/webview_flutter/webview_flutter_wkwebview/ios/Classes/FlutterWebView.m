@@ -10,6 +10,7 @@
 
 @implementation FLTWebViewFactory {
   NSObject<FlutterBinaryMessenger> *_messenger;
+  NSMutableDictionary<NSString*, NSObject<WKURLSchemeHandler>*>* _schemeHandlers;
   FLTCookieManager *_cookieManager;
 }
 
@@ -18,9 +19,14 @@
   self = [super init];
   if (self) {
     _messenger = messenger;
+    _schemeHandlers = [NSMutableDictionary dictionary];
     _cookieManager = cookieManager;
   }
   return self;
+}
+
+- (void)setHandler:(NSObject<WKURLSchemeHandler>*)handler forURLScheme:(NSString*)urlScheme {
+  _schemeHandlers[urlScheme] = handler;
 }
 
 - (NSObject<FlutterMessageCodec> *)createArgsCodec {
@@ -37,7 +43,8 @@
   FLTWebViewController *webviewController = [[FLTWebViewController alloc] initWithFrame:frame
                                                                          viewIdentifier:viewId
                                                                               arguments:args
-                                                                        binaryMessenger:_messenger];
+                                                                        binaryMessenger:_messenger
+                                                                   customSchemeHandlers:_schemeHandlers];
   return webviewController;
 }
 
@@ -79,7 +86,8 @@
 - (instancetype)initWithFrame:(CGRect)frame
                viewIdentifier:(int64_t)viewId
                     arguments:(id _Nullable)args
-              binaryMessenger:(NSObject<FlutterBinaryMessenger> *)messenger {
+              binaryMessenger:(NSObject<FlutterBinaryMessenger> *)messenger
+         customSchemeHandlers:(NSDictionary<NSString*, NSObject<WKURLSchemeHandler>*>*)schemeHandlers {
   if (self = [super init]) {
     _viewId = viewId;
 
@@ -99,6 +107,9 @@
     WKWebViewConfiguration *configuration = [[WKWebViewConfiguration alloc] init];
     [self applyConfigurationSettings:settings toConfiguration:configuration];
     configuration.userContentController = userContentController;
+    for (NSString* scheme in schemeHandlers) {
+      [configuration setURLSchemeHandler:schemeHandlers[scheme] forURLScheme:scheme];
+    }
     [self updateAutoMediaPlaybackPolicy:args[@"autoMediaPlaybackPolicy"]
                         inConfiguration:configuration];
 

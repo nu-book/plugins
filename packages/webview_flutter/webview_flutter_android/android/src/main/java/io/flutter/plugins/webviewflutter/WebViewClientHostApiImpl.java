@@ -11,6 +11,7 @@ import android.os.Build;
 import android.view.KeyEvent;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import androidx.annotation.NonNull;
@@ -33,12 +34,17 @@ public class WebViewClientHostApiImpl implements GeneratedAndroidWebView.WebView
    * An interface implemented by a class that extends {@link WebViewClient} and {@link Releasable}.
    */
   public interface ReleasableWebViewClient extends Releasable {}
+  
+  public interface WebRequestInterceptor {
+    @Nullable WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request);
+  }
 
   /** Implementation of {@link WebViewClient} that passes arguments of callback methods to Dart. */
   @RequiresApi(Build.VERSION_CODES.N)
   public static class WebViewClientImpl extends WebViewClient implements ReleasableWebViewClient {
     @Nullable private WebViewClientFlutterApiImpl flutterApi;
     private final boolean shouldOverrideUrlLoading;
+    @Nullable private WebRequestInterceptor requestInterceptor;
 
     /**
      * Creates a {@link WebViewClient} that passes arguments of callbacks methods to Dart.
@@ -47,9 +53,10 @@ public class WebViewClientHostApiImpl implements GeneratedAndroidWebView.WebView
      * @param shouldOverrideUrlLoading whether loading a url should be overridden
      */
     public WebViewClientImpl(
-        @NonNull WebViewClientFlutterApiImpl flutterApi, boolean shouldOverrideUrlLoading) {
+        @NonNull WebViewClientFlutterApiImpl flutterApi, boolean shouldOverrideUrlLoading, @Nullable WebRequestInterceptor requestInterceptor) {
       this.shouldOverrideUrlLoading = shouldOverrideUrlLoading;
       this.flutterApi = flutterApi;
+      this.requestInterceptor = requestInterceptor;
     }
 
     @Override
@@ -99,6 +106,11 @@ public class WebViewClientHostApiImpl implements GeneratedAndroidWebView.WebView
     }
 
     @Override
+    public @Nullable WebResourceResponse shouldInterceptRequest (WebView view, WebResourceRequest request) {
+      return requestInterceptor != null ? requestInterceptor.shouldInterceptRequest(view, request) : null;
+    }
+    
+    @Override
     public void onUnhandledKeyEvent(WebView view, KeyEvent event) {
       // Deliberately empty. Occasionally the webview will mark events as having failed to be
       // handled even though they were handled. We don't want to propagate those as they're not
@@ -121,11 +133,13 @@ public class WebViewClientHostApiImpl implements GeneratedAndroidWebView.WebView
       implements ReleasableWebViewClient {
     private @Nullable WebViewClientFlutterApiImpl flutterApi;
     private final boolean shouldOverrideUrlLoading;
+    @Nullable private WebRequestInterceptor requestInterceptor;
 
     public WebViewClientCompatImpl(
-        @NonNull WebViewClientFlutterApiImpl flutterApi, boolean shouldOverrideUrlLoading) {
+        @NonNull WebViewClientFlutterApiImpl flutterApi, boolean shouldOverrideUrlLoading, @Nullable WebRequestInterceptor requestInterceptor) {
       this.shouldOverrideUrlLoading = shouldOverrideUrlLoading;
       this.flutterApi = flutterApi;
+      this.requestInterceptor = requestInterceptor;
     }
 
     @Override
@@ -183,6 +197,10 @@ public class WebViewClientHostApiImpl implements GeneratedAndroidWebView.WebView
       return shouldOverrideUrlLoading;
     }
 
+    public WebResourceResponse shouldInterceptRequest (WebView view, WebResourceRequest request) {
+      return requestInterceptor != null ? requestInterceptor.shouldInterceptRequest(view, request) : null;
+    }
+
     @Override
     public void onUnhandledKeyEvent(WebView view, KeyEvent event) {
       // Deliberately empty. Occasionally the webview will mark events as having failed to be
@@ -197,9 +215,20 @@ public class WebViewClientHostApiImpl implements GeneratedAndroidWebView.WebView
       flutterApi = null;
     }
   }
-
+  
   /** Handles creating {@link WebViewClient}s for a {@link WebViewClientHostApiImpl}. */
   public static class WebViewClientCreator {
+    
+    private WebRequestInterceptor requestInterceptor;
+    
+    public @Nullable WebRequestInterceptor getRequestInterceptor() {
+        return requestInterceptor;
+    }
+    
+    public void setRequestInterceptor(@Nullable WebRequestInterceptor interceptor) {
+        requestInterceptor = interceptor;
+    }
+    
     /**
      * Creates a {@link WebViewClient}.
      *
@@ -217,9 +246,9 @@ public class WebViewClientHostApiImpl implements GeneratedAndroidWebView.WebView
       // to bug https://bugs.chromium.org/p/chromium/issues/detail?id=925887. Also, see
       // https://github.com/flutter/flutter/issues/29446.
       if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-        return new WebViewClientImpl(flutterApi, shouldOverrideUrlLoading);
+        return new WebViewClientImpl(flutterApi, shouldOverrideUrlLoading, requestInterceptor);
       } else {
-        return new WebViewClientCompatImpl(flutterApi, shouldOverrideUrlLoading);
+        return new WebViewClientCompatImpl(flutterApi, shouldOverrideUrlLoading, requestInterceptor);
       }
     }
   }
