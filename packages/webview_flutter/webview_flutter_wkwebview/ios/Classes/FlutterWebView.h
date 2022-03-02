@@ -24,7 +24,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (instancetype)initWithFrame:(CGRect)frame
                viewIdentifier:(int64_t)viewId
                     arguments:(id _Nullable)args
-              binaryMessenger:(NSObject<FlutterBinaryMessenger> *)messenger;
+              binaryMessenger:(NSObject<FlutterBinaryMessenger> *)messenger
+         customSchemeHandlers:(NSDictionary<NSString*, NSObject<WKURLSchemeHandler>*>*)schemeHandlers;
 
 - (UIView *)view;
 
@@ -35,6 +36,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface FLTWebViewFactory : NSObject <FlutterPlatformViewFactory>
 - (instancetype)initWithMessenger:(NSObject<FlutterBinaryMessenger> *)messenger
                     cookieManager:(FLTCookieManager *)cookieManager;
+- (void)setHandler:(NSObject<WKURLSchemeHandler>*)handler forURLScheme:(NSString*)urlScheme;
 @end
 
 NS_ASSUME_NONNULL_END

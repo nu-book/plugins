@@ -4,6 +4,7 @@
 
 package io.flutter.plugins.webviewflutter;
 
+import android.os.Build;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import io.flutter.plugins.webviewflutter.GeneratedAndroidWebView.WebSettingsHostApi;
@@ -26,7 +27,11 @@ public class WebSettingsHostApiImpl implements WebSettingsHostApi {
      * @return the created {@link WebSettings}
      */
     public WebSettings createWebSettings(WebView webView) {
-      return webView.getSettings();
+      WebSettings settings = webView.getSettings();
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
+      }
+      return settings;
     }
   }
 

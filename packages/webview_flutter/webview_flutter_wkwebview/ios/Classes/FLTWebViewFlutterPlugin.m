@@ -14,6 +14,7 @@
       [[FLTWebViewFactory alloc] initWithMessenger:registrar.messenger
                                      cookieManager:[FLTCookieManager instance]];
   [registrar registerViewFactory:webviewFactory withId:@"plugins.flutter.io/webview"];
+  [registrar publish:webviewFactory];
 }
 
 @end
