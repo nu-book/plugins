@@ -24,11 +24,15 @@
 - (instancetype)initWithManager:(FWFInstanceManager *)manager;
 @end
 
-@implementation FWFWebViewFactory
+@implementation FWFWebViewFactory {
+  NSMutableDictionary<NSString*, NSObject<WKURLSchemeHandler>*>* _schemeHandlers;
+}
+
 - (instancetype)initWithManager:(FWFInstanceManager *)manager {
   self = [self init];
   if (self) {
     _instanceManager = manager;
+    _schemeHandlers = [NSMutableDictionary dictionary];
   }
   return self;
 }
@@ -44,7 +48,17 @@
   FWFWebView *webView =
       (FWFWebView *)[self.instanceManager instanceForIdentifier:identifier.longValue];
   webView.frame = frame;
+  
+  WKWebViewConfiguration  *configuration = webView.configuration;
+  for (NSString* scheme in schemeHandlers) {
+      [configuration setURLSchemeHandler:schemeHandlers[scheme] forURLScheme:scheme];
+  }
+  
   return webView;
+}
+
+- (void)setHandler:(NSObject<WKURLSchemeHandler>*)handler forURLScheme:(NSString*)urlScheme {
+  _schemeHandlers[urlScheme] = handler;
 }
 
 @end
