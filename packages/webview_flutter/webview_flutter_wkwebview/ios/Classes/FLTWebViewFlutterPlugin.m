@@ -50,8 +50,8 @@
   webView.frame = frame;
   
   WKWebViewConfiguration  *configuration = webView.configuration;
-  for (NSString* scheme in schemeHandlers) {
-      [configuration setURLSchemeHandler:schemeHandlers[scheme] forURLScheme:scheme];
+  for (NSString* scheme in _schemeHandlers) {
+      [configuration setURLSchemeHandler:_schemeHandlers[scheme] forURLScheme:scheme];
   }
   
   return webView;
