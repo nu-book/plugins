@@ -49,9 +49,9 @@
       (FWFWebView *)[self.instanceManager instanceForIdentifier:identifier.longValue];
   webView.frame = frame;
   
-  WKWebViewConfiguration  *configuration = webView.configuration;
+  WKWebViewConfiguration *configuration = webView.configuration;
   for (NSString* scheme in _schemeHandlers) {
-      [configuration setURLSchemeHandler:_schemeHandlers[scheme] forURLScheme:scheme];
+    [configuration setURLSchemeHandler:_schemeHandlers[scheme] forURLScheme:scheme];
   }
   
   return webView;
@@ -118,10 +118,10 @@
   FWFWebViewFactory *webviewFactory = [[FWFWebViewFactory alloc] initWithManager:instanceManager];
   [registrar registerViewFactory:webviewFactory withId:@"plugins.flutter.io/webview"];
 
+  [instanceManager setWebviewFactory:webviewFactory];
+  
   // InstanceManager is published so that a strong reference is maintained.
   [registrar publish:instanceManager];
-  
-  [registrar publish:webviewFactory];
 }
 
 - (void)detachFromEngineForRegistrar:(NSObject<FlutterPluginRegistrar> *)registrar {

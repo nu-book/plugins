@@ -8,6 +8,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 typedef void (^FWFOnDeallocCallback)(long identifier);
 
+@class FWFWebViewFactory;
+
 /**
  * Maintains instances used to communicate with the corresponding objects in Dart.
  *
@@ -92,6 +94,9 @@ typedef void (^FWFOnDeallocCallback)(long identifier);
  * @return Whether this manager contains the given `instance`.
  */
 - (BOOL)containsInstance:(nonnull NSObject *)instance;
+
+@property FWFWebViewFactory* webviewFactory;
+
 @end
 
 NS_ASSUME_NONNULL_END
