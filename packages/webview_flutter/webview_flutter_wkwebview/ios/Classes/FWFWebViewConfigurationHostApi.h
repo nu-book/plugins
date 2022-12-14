@@ -41,7 +41,8 @@ NS_ASSUME_NONNULL_BEGIN
  */
 @interface FWFWebViewConfigurationHostApiImpl : NSObject <FWFWKWebViewConfigurationHostApi>
 - (instancetype)initWithBinaryMessenger:(id<FlutterBinaryMessenger>)binaryMessenger
-                        instanceManager:(FWFInstanceManager *)instanceManager;
+                        instanceManager:(FWFInstanceManager *)instanceManager
+                         schemeHandlers:(NSDictionary<NSString*, id<WKURLSchemeHandler>>*)schemeHandlers;
 @end
 
 NS_ASSUME_NONNULL_END

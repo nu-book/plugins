@@ -59,15 +59,18 @@
 @property(nonatomic, weak) id<FlutterBinaryMessenger> binaryMessenger;
 // InstanceManager must be weak to prevent a circular reference with the object it stores.
 @property(nonatomic, weak) FWFInstanceManager *instanceManager;
+@property(nonatomic, weak) NSDictionary<NSString*, id<WKURLSchemeHandler>> *schemeHandlers;
 @end
 
 @implementation FWFWebViewConfigurationHostApiImpl
 - (instancetype)initWithBinaryMessenger:(id<FlutterBinaryMessenger>)binaryMessenger
-                        instanceManager:(FWFInstanceManager *)instanceManager {
+                        instanceManager:(FWFInstanceManager *)instanceManager
+                         schemeHandlers:(NSDictionary<NSString*, id<WKURLSchemeHandler>>*)schemeHandlers {
   self = [self init];
   if (self) {
     _binaryMessenger = binaryMessenger;
     _instanceManager = instanceManager;
+    _schemeHandlers = schemeHandlers;
   }
   return self;
 }
@@ -82,6 +85,10 @@
   FWFWebViewConfiguration *webViewConfiguration =
       [[FWFWebViewConfiguration alloc] initWithBinaryMessenger:self.binaryMessenger
                                                instanceManager:self.instanceManager];
+  for (NSString* scheme in _schemeHandlers) {
+    [webViewConfiguration setURLSchemeHandler:_schemeHandlers[scheme] forURLScheme:scheme];
+  }
+
   [self.instanceManager addDartCreatedInstance:webViewConfiguration
                                 withIdentifier:identifier.longValue];
 }
