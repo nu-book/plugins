@@ -32,21 +32,21 @@ public class WebViewClientHostApiImpl implements GeneratedAndroidWebView.WebView
 
   
   public interface WebRequestInterceptor {
-    @Nullable WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request);
+    WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request);
   }
   /** Implementation of {@link WebViewClient} that passes arguments of callback methods to Dart. */
   @RequiresApi(Build.VERSION_CODES.N)
   public static class WebViewClientImpl extends WebViewClient {
     private final WebViewClientFlutterApiImpl flutterApi;
     private boolean returnValueForShouldOverrideUrlLoading = false;
-    @Nullable private WebRequestInterceptor requestInterceptor;
+    private WebRequestInterceptor requestInterceptor;
 
     /**
      * Creates a {@link WebViewClient} that passes arguments of callbacks methods to Dart.
      *
      * @param flutterApi handles sending messages to Dart
      */
-    public WebViewClientImpl(@NonNull WebViewClientFlutterApiImpl flutterApi, @Nullable WebRequestInterceptor requestInterceptor) {
+    public WebViewClientImpl(@NonNull WebViewClientFlutterApiImpl flutterApi, WebRequestInterceptor requestInterceptor) {
       this.flutterApi = flutterApi;
       this.requestInterceptor = requestInterceptor;
     }
@@ -86,7 +86,7 @@ public class WebViewClientHostApiImpl implements GeneratedAndroidWebView.WebView
     }
 
     @Override
-    public @Nullable WebResourceResponse shouldInterceptRequest (WebView view, WebResourceRequest request) {
+    public WebResourceResponse shouldInterceptRequest (WebView view, WebResourceRequest request) {
       return requestInterceptor != null ? requestInterceptor.shouldInterceptRequest(view, request) : null;
     }
     
@@ -110,9 +110,9 @@ public class WebViewClientHostApiImpl implements GeneratedAndroidWebView.WebView
   public static class WebViewClientCompatImpl extends WebViewClientCompat {
     private final WebViewClientFlutterApiImpl flutterApi;
     private boolean returnValueForShouldOverrideUrlLoading = false;
-    @Nullable private WebRequestInterceptor requestInterceptor;
+    private WebRequestInterceptor requestInterceptor;
 
-    public WebViewClientCompatImpl(@NonNull WebViewClientFlutterApiImpl flutterApi, @Nullable WebRequestInterceptor requestInterceptor) {
+    public WebViewClientCompatImpl(@NonNull WebViewClientFlutterApiImpl flutterApi, WebRequestInterceptor requestInterceptor) {
       this.flutterApi = flutterApi;
       this.requestInterceptor = requestInterceptor;
     }
@@ -182,11 +182,11 @@ public class WebViewClientHostApiImpl implements GeneratedAndroidWebView.WebView
     
     private WebRequestInterceptor requestInterceptor;
     
-    public @Nullable WebRequestInterceptor getRequestInterceptor() {
+    public WebRequestInterceptor getRequestInterceptor() {
         return requestInterceptor;
     }
     
-    public void setRequestInterceptor(@Nullable WebRequestInterceptor interceptor) {
+    public void setRequestInterceptor(WebRequestInterceptor interceptor) {
         requestInterceptor = interceptor;
     }
     
