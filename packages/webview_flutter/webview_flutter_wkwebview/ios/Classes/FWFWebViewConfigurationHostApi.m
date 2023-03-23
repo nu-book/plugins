@@ -85,6 +85,9 @@
   FWFWebViewConfiguration *webViewConfiguration =
       [[FWFWebViewConfiguration alloc] initWithBinaryMessenger:self.binaryMessenger
                                                instanceManager:self.instanceManager];
+  if (@available(iOS 14.0, *)) {
+    webViewConfiguration.limitsNavigationsToAppBoundDomains = YES;
+  }
   for (NSString* scheme in _schemeHandlers) {
     [webViewConfiguration setURLSchemeHandler:_schemeHandlers[scheme] forURLScheme:scheme];
   }
